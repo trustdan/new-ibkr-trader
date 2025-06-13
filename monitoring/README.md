@@ -1,139 +1,190 @@
-# System Monitoring Strategy
+# 📊 Monitoring Strategy
 
-## Overview
+Real-time visibility into our trading system's health and performance.
 
-Real-time monitoring is critical for IBKR trading systems. This directory contains configurations and dashboards for comprehensive system observability.
+## Philosophy
 
-## Key Metrics to Track
+"You can't optimize what you don't measure." We implement comprehensive monitoring from day one, not as an afterthought.
 
-### 1. Connection Health
-- **TWS Connection Status**: Binary up/down
-- **Connection Duration**: Time since last disconnect
-- **Reconnection Count**: Daily reconnections
-- **Watchdog Status**: Active/inactive
+## Architecture
 
-### 2. API Usage
-- **Request Rate**: Requests per second (target: <45)
-- **Throttle Events**: Count and duration
-- **Queue Depth**: Pending requests
-- **Error Rate**: By error code
-
-### 3. Market Data
-- **Active Subscriptions**: Current vs max
-- **Subscription Churn**: Evictions per minute
-- **Data Latency**: Time from request to receipt
-- **Cache Hit Rate**: Percentage of cached responses
-
-### 4. Order Execution
-- **Order Fill Rate**: Successful fills percentage
-- **Execution Time**: Order submission to fill
-- **Rejection Rate**: By reason
-- **Active Orders**: Current count
-
-### 5. System Performance
-- **CPU Usage**: By service
-- **Memory Usage**: Especially Python service
-- **Event Loop Lag**: Python async health
-- **Network Latency**: Between services
-
-## Dashboard Layout
-
-### Main Dashboard
 ```
-┌─────────────────────────────────────────────────────┐
-│                  System Health                       │
-├─────────────────┬─────────────────┬─────────────────┤
-│ TWS Connection  │ API Usage       │ Active Orders   │
-│ ✅ Connected    │ 32/45 req/s     │ 3 pending       │
-├─────────────────┴─────────────────┴─────────────────┤
-│                Market Data Usage                     │
-│ ████████████████████░░░░░░  72/90 subscriptions    │
-├─────────────────────────────────────────────────────┤
-│                  Recent Alerts                       │
-│ ⚠️ 14:32 - Throttling started (2s)                 │
-│ ℹ️ 14:28 - Subscription evicted: SPY_20240315_C400 │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    Grafana Dashboards                        │
+│  - System Health  - Trading Metrics  - Performance Graphs   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │ Prometheus  │
+                    │  Metrics DB │
+                    └──────┬──────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+   ┌────┴────┐      ┌─────┴─────┐     ┌─────┴─────┐
+   │ Python  │      │ Go Scanner│     │    GUI    │
+   │ Service │      │  Service  │     │  Backend  │
+   └─────────┘      └───────────┘     └───────────┘
 ```
 
-### Detailed Metrics
-- Request latency histogram
-- Error rate by type
-- Subscription lifetime distribution
-- Order execution timeline
+## Key Metrics
+
+### 🔌 Connection Health
+- `ibkr_connection_status` - TWS connection state (0/1)
+- `ibkr_connection_uptime` - Seconds since last connection
+- `ibkr_reconnection_count` - Total reconnection attempts
+- `ibkr_last_error_code` - Most recent TWS error code
+
+### 📈 Market Data
+- `ibkr_active_subscriptions` - Current market data subscriptions
+- `ibkr_subscription_usage_pct` - Percentage of limit used
+- `ibkr_subscription_evictions_total` - LRU eviction count
+- `ibkr_market_data_updates_per_second` - Update rate
+
+### 🎯 Scanner Performance
+- `scanner_execution_time_ms` - Time to complete scan
+- `scanner_contracts_processed` - Contracts evaluated
+- `scanner_results_found` - Matching opportunities
+- `scanner_filter_performance` - Time per filter type
+
+### 💼 Trading Metrics
+- `orders_placed_total` - Total orders by type
+- `orders_filled_total` - Successfully filled orders
+- `order_execution_time_ms` - Time from submit to fill
+- `order_rejection_rate` - Percentage rejected
+
+### ⚡ System Performance
+- `request_queue_depth` - Pending API requests
+- `api_request_rate` - Requests per second
+- `throttle_events_total` - Rate limit violations
+- `memory_usage_bytes` - Service memory consumption
+
+## Dashboards
+
+### 1. System Health Overview
+Real-time status of all components:
+- Connection status indicators
+- Service health checks
+- Error rate graphs
+- Queue depth visualization
+
+### 2. Trading Performance
+Track trading effectiveness:
+- Order fill rates
+- Execution times
+- P&L tracking
+- Position monitoring
+
+### 3. API Usage
+Stay within limits:
+- Request rate vs limits
+- Subscription usage gauge
+- Throttling events
+- Historical patterns
+
+### 4. Scanner Analytics
+Optimize scanning:
+- Scan performance trends
+- Filter effectiveness
+- Result quality metrics
+- Resource utilization
 
 ## Alert Rules
 
-### Critical Alerts
-1. **TWS Disconnected** > 30 seconds
-2. **Error Rate** > 5% over 1 minute
-3. **Queue Depth** > 200 requests
-4. **No Market Data** > 10 seconds
+### Critical Alerts 🚨
+- TWS disconnection > 30 seconds
+- API error rate > 5%
+- Order rejection rate > 10%
+- Service down
 
-### Warning Alerts
-1. **Subscription Usage** > 80%
-2. **Throttle Events** > 5 per minute
-3. **Memory Usage** > 80%
-4. **Order Rejection Rate** > 10%
+### Warning Alerts ⚠️
+- Subscription usage > 80%
+- Queue depth > 100
+- Memory usage > 80%
+- Throttle events detected
 
-### Info Alerts
-1. Daily TWS restart approaching
-2. New error code detected
-3. Performance degradation
-4. Unusual trading patterns
+### Info Alerts ℹ️
+- Daily TWS restart approaching
+- Scan performance degradation
+- Unusual trading patterns
 
-## Implementation
+## Implementation Plan
 
-### Prometheus Metrics
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
+### Phase 1: Basic Metrics
+- [ ] Prometheus client in each service
+- [ ] Basic health endpoints
+- [ ] Connection status tracking
+- [ ] Simple Grafana dashboard
 
-scrape_configs:
-  - job_name: 'python-ibkr'
-    static_configs:
-      - targets: ['python-ibkr:8080']
-  
-  - job_name: 'go-scanner'
-    static_configs:
-      - targets: ['go-scanner:8081']
-```
+### Phase 2: Trading Metrics
+- [ ] Order tracking
+- [ ] Performance measurements
+- [ ] Custom business metrics
+- [ ] Advanced dashboards
 
-### Grafana Dashboards
-1. `system-overview.json` - Main health dashboard
-2. `api-usage.json` - Detailed API metrics
-3. `market-data.json` - Subscription management
-4. `order-execution.json` - Trading performance
-5. `alerts-config.json` - Alert configuration
+### Phase 3: Optimization
+- [ ] Performance profiling
+- [ ] Resource optimization
+- [ ] Predictive alerts
+- [ ] Capacity planning
+
+## Quick Start
+
+1. **Start monitoring stack**:
+   ```bash
+   docker-compose up prometheus grafana
+   ```
+
+2. **Access dashboards**:
+   - Prometheus: http://localhost:9090
+   - Grafana: http://localhost:3000 (admin/admin)
+
+3. **Import dashboards**:
+   - Located in `monitoring/grafana/dashboards/`
+
+4. **Configure alerts**:
+   - Edit `monitoring/prometheus/alerts.yml`
 
 ## Best Practices
 
-1. **Monitor First, Alert Second**: Observe patterns before setting thresholds
-2. **Context in Alerts**: Include relevant data in alert messages
-3. **Dashboard Hierarchy**: Overview → Component → Detail
-4. **Regular Reviews**: Weekly threshold adjustments based on patterns
-5. **Correlation**: Link metrics to identify root causes
+1. **Metric Naming**: Follow Prometheus conventions
+   - `service_subsystem_metric_unit`
+   - Use labels for dimensions
 
-## Troubleshooting Guide
+2. **Dashboard Design**: Keep it simple
+   - Overview → Detail flow
+   - Use consistent color schemes
+   - Include helpful annotations
 
-### High Throttle Rate
-1. Check scanner request patterns
-2. Verify batching is working
-3. Review subscription churn
-4. Consider increasing delays
+3. **Alert Fatigue**: Avoid over-alerting
+   - Alert on symptoms, not causes
+   - Include remediation steps
+   - Use appropriate severity levels
 
-### Connection Issues
-1. Verify TWS is running
-2. Check network connectivity
-3. Review Watchdog logs
-4. Confirm port accessibility
+4. **Performance**: Minimize overhead
+   - Use histograms for latencies
+   - Batch metric updates
+   - Reasonable retention periods
 
-### Memory Growth
-1. Check subscription cleanup
-2. Review event handler efficiency
-3. Verify cache eviction
-4. Look for memory leaks
+## Debugging Guide
 
----
+When something goes wrong:
 
-Remember: Good monitoring prevents bad surprises. When in doubt, add a metric!
+1. **Check System Health Dashboard**
+   - Are all services green?
+   - Any recent error spikes?
+
+2. **Review Logs**
+   - Container logs: `docker logs [container]`
+   - Aggregated in Loki (if enabled)
+
+3. **Analyze Metrics**
+   - Look for anomalies before the issue
+   - Compare with historical data
+
+4. **Test Metrics Endpoint**
+   ```bash
+   curl http://localhost:8080/metrics
+   ```
+
+Remember: Good monitoring is like a good co-pilot - it tells you what you need to know when you need to know it. 📊✨
