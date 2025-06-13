@@ -45,6 +45,23 @@ Transform complex options trading into a flowing, intuitive experience where tec
 
 ## Quick Start
 
+### Using Pre-built Docker Images (Recommended)
+
+```bash
+# Set environment variables
+export DOCKER_REGISTRY=ibkrtrader  # Or your Docker Hub username
+export VERSION=latest
+
+# Pull and run with Docker Compose
+docker-compose up -d
+
+# Access the services:
+# - GUI: http://localhost:3000
+# - Scanner API: http://localhost:8080
+# - Prometheus: http://localhost:9090
+# - Grafana: http://localhost:3001
+```
+
 ### Prerequisites
 
 1. **Interactive Brokers Account** with options trading permissions
@@ -103,7 +120,38 @@ curl http://localhost:8080/health
    http://localhost:9090  # Prometheus
    ```
 
+## Docker Images
+
+Pre-built images are available on Docker Hub:
+
+- `ibkrtrader/ibkr-python:latest` - Python IBKR connector
+- `ibkrtrader/ibkr-scanner:latest` - Go options scanner
+- `ibkrtrader/ibkr-gui:latest` - GUI application
+
+### Building Images Locally
+
+```bash
+# Build all services
+docker-compose -f docker-compose.dev.yml build
+
+# Build specific service
+docker-compose -f docker-compose.dev.yml build python
+
+# Build for production
+docker build -t myregistry/ibkr-python:v1.0 -f docker/python/Dockerfile .
+```
+
 ## Development
+
+### Development Setup
+
+```bash
+# Use development compose file for hot-reloading
+docker-compose -f docker-compose.dev.yml up
+
+# Or use the Makefile
+make dev
+```
 
 ### Project Structure
 

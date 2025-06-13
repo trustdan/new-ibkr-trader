@@ -1,0 +1,50 @@
+# Prometheus configuration for IBKR Spread Automation
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'ibkr-monitor'
+
+# Scrape configurations
+scrape_configs:
+  # Python IBKR service metrics
+  - job_name: 'python-ibkr'
+    static_configs:
+      - targets: ['python:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'python-ibkr'
+
+  # Go scanner service metrics
+  - job_name: 'go-scanner'
+    static_configs:
+      - targets: ['scanner:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'go-scanner'
+
+  # GUI service metrics
+  - job_name: 'gui'
+    static_configs:
+      - targets: ['gui:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'gui'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node exporter for system metrics (optional)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'docker-host'

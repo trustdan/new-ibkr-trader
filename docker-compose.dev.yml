@@ -1,0 +1,164 @@
+version: '3.8'
+
+# Development Docker Compose configuration
+# Builds images locally and mounts source code for hot-reloading
+
+services:
+  # Python IBKR connector service
+  python:
+    build:
+      context: .
+      dockerfile: docker/python/Dockerfile
+      target: runtime  # Use runtime stage
+    container_name: ibkr-python-dev
+    restart: unless-stopped
+    environment:
+      - IBKR_HOST=host.docker.internal
+      - IBKR_PORT=${IBKR_PORT:-7497}
+      - IBKR_CLIENT_ID=${CLIENT_ID:-999}  # Dev client ID
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}      # More verbose for dev
+      - PYTHONUNBUFFERED=1
+      - WATCHDOG_ENABLED=false             # Disable in dev for easier debugging
+    volumes:
+      - ./src/python:/app/src/python:ro   # Mount source code
+      - ./scripts:/app/scripts:ro
+      - ./tests/python:/app/tests:ro
+      - ./logs/python:/app/logs
+      - ./config:/app/config:ro
+      - ./.vibe:/app/.vibe
+    networks:
+      - ibkr-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"  # Python API (if implemented)
+      - "5678:5678"  # Python debugger port
+    command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "-m", "src.python.ibkr_connector"]
+
+  # Go scanner service
+  scanner:
+    build:
+      context: .
+      dockerfile: docker/scanner/Dockerfile
+      target: builder  # Use builder stage for development
+    container_name: ibkr-scanner-dev
+    restart: unless-stopped
+    working_dir: /build
+    environment:
+      - SCANNER_PORT=8080
+      - PYTHON_SERVICE=http://python:8000
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - CGO_ENABLED=0
+    volumes:
+      - ./src/go:/build/src/go:ro
+      - ./go.mod:/build/go.mod:ro
+      - ./go.sum:/build/go.sum:ro
+      - ./logs/scanner:/build/logs
+      - go-cache:/go/pkg/mod
+    networks:
+      - ibkr-network
+    ports:
+      - "8080:8080"   # Scanner API
+      - "2345:2345"   # Go debugger port
+    command: ["go", "run", "-gcflags=all=-N -l", "./src/go/cmd/scanner"]
+
+  # GUI service
+  gui:
+    build:
+      context: .
+      dockerfile: docker/gui/Dockerfile
+      target: frontend-builder  # Use builder for development
+    container_name: ibkr-gui-dev
+    restart: unless-stopped
+    working_dir: /build
+    environment:
+      - GUI_PORT=3000
+      - SCANNER_URL=http://scanner:8080
+      - PYTHON_URL=http://python:8000
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - NODE_ENV=development
+    volumes:
+      - ./src/gui:/build:ro
+      - node-modules:/build/node_modules
+    networks:
+      - ibkr-network
+    ports:
+      - "3000:3000"   # GUI web interface
+      - "35729:35729" # LiveReload port
+    command: ["npm", "run", "dev"]
+
+  # Development tools
+  adminer:
+    image: adminer:latest
+    container_name: ibkr-adminer
+    restart: unless-stopped
+    networks:
+      - ibkr-network
+    ports:
+      - "8082:8080"  # Database admin UI
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+
+  # Optional: PostgreSQL for development
+  postgres:
+    image: postgres:15-alpine
+    container_name: ibkr-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ibkr
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_DB=ibkr_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ibkr-network
+    ports:
+      - "5432:5432"
+
+  # Monitoring (same as production)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ibkr-prometheus-dev
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'  # Enable config reload via API
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - ibkr-network
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ibkr-grafana-dev
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin  # Easy access in dev
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - ibkr-network
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+networks:
+  ibkr-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  postgres-data:
+  go-cache:
+  node-modules:

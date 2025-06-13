@@ -1,0 +1,133 @@
+name: Docker Build and Publish
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  REGISTRY: docker.io
+  IMAGE_PREFIX: ${{ secrets.DOCKER_USERNAME || 'ibkrtrader' }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        include:
+          - service: python
+            context: .
+            dockerfile: docker/python/Dockerfile
+          - service: scanner
+            context: .
+            dockerfile: docker/scanner/Dockerfile
+          - service: gui
+            context: .
+            dockerfile: docker/gui/Dockerfile
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better caching
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        install: true
+
+    - name: Log in to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/ibkr-${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ matrix.context }}
+        file: ${{ matrix.dockerfile }}
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ github.sha }}
+          BUILD_DATE=${{ steps.meta.outputs.created }}
+
+  test-images:
+    needs: build-and-push
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Test Docker Compose
+      run: |
+        # Create .env file with test values
+        cat > .env <<EOF
+        DOCKER_REGISTRY=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}
+        VERSION=pr-${{ github.event.pull_request.number }}
+        IBKR_PORT=7497
+        CLIENT_ID=999
+        LOG_LEVEL=INFO
+        GRAFANA_PASSWORD=testpass
+        EOF
+        
+        # Validate docker-compose files
+        docker-compose -f docker-compose.yml config
+        docker-compose -f docker-compose.dev.yml config
+
+  update-docs:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update README with latest tags
+      run: |
+        # Update README with latest image tags
+        sed -i "s|ibkrtrader/ibkr-python:.*|${{ env.IMAGE_PREFIX }}/ibkr-python:latest|g" README.md
+        sed -i "s|ibkrtrader/ibkr-scanner:.*|${{ env.IMAGE_PREFIX }}/ibkr-scanner:latest|g" README.md
+        sed -i "s|ibkrtrader/ibkr-gui:.*|${{ env.IMAGE_PREFIX }}/ibkr-gui:latest|g" README.md
+        
+        # Commit if changes
+        if [[ $(git diff --stat) != '' ]]; then
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "Update Docker image references [skip ci]"
+          git push
+        fi
