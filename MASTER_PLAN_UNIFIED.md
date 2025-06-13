@@ -201,7 +201,7 @@ if __name__ == '__main__':
 **Afternoon (4 hours)**
 ```makefile
 # Makefile with async-aware commands
-.PHONY: dev test monitor clean vibe
+.PHONY: dev test monitor clean vibe paper-test
 
 dev:
 	@echo "🚀 Starting async development environment..."
@@ -213,6 +213,12 @@ dev:
 test:
 	@echo "🧪 Running async tests..."
 	docker-compose run --rm python-ibkr pytest -v --asyncio-mode=auto
+
+paper-test:
+	@echo "📄 Running paper trading validation suite..."
+	docker-compose -f docker-compose.paper.yml up -d
+	@sleep 10
+	@docker-compose run --rm test-runner pytest tests/paper_trading/ -v
 
 monitor:
 	@echo "📊 Opening monitoring dashboards..."
@@ -280,6 +286,7 @@ class AsyncIBKRService:
         self.watchdog: Optional[Watchdog] = None
         self.next_order_id: int = 0
         self.subscriptions = {}  # Track market data subscriptions
+        self.last_sequence_number: int = 0  # Track for daily restart handling
         self._setup_event_handlers()
         
     def _setup_event_handlers(self):
@@ -352,6 +359,7 @@ Feature: Robust Connection Management
 - Implement subscription restoration after reconnect
 - Add connection metrics collection
 - Create restart schedule awareness
+- Handle sequence number reset after TWS restart
 - Test watchdog recovery scenarios
 
 ### Day 8-9: Market Data Subscription Management
@@ -517,25 +525,38 @@ Feature: Intelligent Request Coordination
 - Create performance metrics dashboard
 - Update flow journal with coordination insights
 
-### Day 12-13: Order Execution Engine (Async)
+### Day 12-13: Order Execution Engine (Async) with Risk Management
 **Day 12 Morning (4 hours)**
 ```python
 # src/python/trading/async_order_engine.py
 from ib_insync import Contract, Order, Trade, ComboLeg
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
+from dataclasses import dataclass
+
+@dataclass
+class RiskLimits:
+    max_position_size: int = 10
+    max_daily_loss: float = 1000.0
+    max_order_value: float = 10000.0
+    min_buying_power: float = 5000.0
+    max_volatility_iv: float = 100.0  # Circuit breaker
 
 class AsyncOrderEngine:
-    """Event-driven order execution engine"""
+    """Event-driven order execution engine with risk management"""
     
-    def __init__(self, ib, coordinator):
+    def __init__(self, ib, coordinator, risk_limits: RiskLimits = None):
         self.ib = ib
         self.coordinator = coordinator
+        self.risk_limits = risk_limits or RiskLimits()
         self.active_trades: Dict[int, Trade] = {}
+        self.partial_fills: Dict[int, List[Trade]] = {}
+        self.pending_modifications: Dict[int, Order] = {}
         self.execution_metrics = {
             'total_orders': 0,
             'successful_fills': 0,
+            'partial_fills': 0,
             'rejected_orders': 0,
             'avg_fill_time': 0
         }
@@ -573,6 +594,13 @@ class AsyncOrderEngine:
             transmit=False  # Don't transmit yet
         )
         
+        # Pre-trade risk validation
+        await self._validate_risk_limits(combo, order)
+        
+        # Check market volatility circuit breaker
+        if await self._check_volatility_circuit_breaker(symbol):
+            raise ValueError("Market volatility circuit breaker triggered")
+        
         # Preview order
         preview = await self.coordinator.submit_request(
             self.ib.whatIfOrderAsync, combo, order
@@ -608,8 +636,9 @@ class AsyncOrderEngine:
 **Day 12 Afternoon (4 hours)**
 - Implement combo contract creation helpers
 - Add OCA group management for risk
-- Create order validation logic
-- Build fill monitoring system
+- Create order validation logic with risk checks
+- Build fill monitoring system with partial fill handling
+- Implement order modification/cancellation queue
 
 **Day 13 Morning (4 hours)**
 ```gherkin
@@ -623,12 +652,14 @@ Feature: Reliable Spread Execution
     When I submit the order
     Then the system:
       | Step          | Action                      | Validation           |
+      | Risk check    | Validate position limits   | Within risk params   |
+      | Volatility    | Check market conditions    | No circuit breaker   |
       | Build combo   | Create spread contract     | Both legs qualified  |
       | Preview       | whatIfOrder check          | Margin acceptable    |
       | Smart price   | Calculate optimal limit    | Within bid-ask       |
       | Submit        | Place combo order          | Order accepted       |
       | Monitor       | Track via events           | Real-time updates    |
-      | Fill          | Both legs execute          | Prices reasonable    |
+      | Fill          | Handle partial fills       | Aggregate correctly  |
       | Report        | Log execution metrics      | Update dashboard     |
 ```
 
@@ -1966,30 +1997,45 @@ Feature: Production Security
 - Documentation review
 - Deployment dry run
 
-### Day 47-48: Testing & Documentation
+### Day 47-48: Testing & Documentation with Paper Trading Validation
 **Day 47 Morning (4 hours)**
-- End-to-end system testing
-- User acceptance testing
-- Performance benchmarking
-- Security penetration testing
+```gherkin
+Feature: Paper Trading Validation
+  As a system validator
+  I want comprehensive paper trading tests
+  So that we catch issues before production
+
+  Scenario: Complete paper trading validation
+    Given system connected to paper account (port 7497)
+    When running validation suite
+    Then verify:
+      | Test Category        | Validation                  | Success Criteria    |
+      | Connection handling  | Daily restart recovery      | Auto-reconnects     |
+      | Order execution      | All order types work        | No rejections       |
+      | Partial fills        | Handled correctly           | State consistent    |
+      | Risk limits          | Enforced properly           | Orders blocked      |
+      | Circuit breakers     | Trigger on volatility       | Trading halted      |
+      | Sequence numbers     | Reset handling works        | No errors after     |
+      | Performance          | Meets targets               | <2s execution       |
+```
 
 **Day 47 Afternoon (4 hours)**
-- Fix identified issues
-- Optimize bottlenecks
-- Update documentation
-- Create troubleshooting guide
+- Run extended paper trading scenarios
+- Test edge cases and error conditions
+- Validate all risk management features
+- Document any issues found
 
 **Day 48 Morning (4 hours)**
 - Complete system documentation
 - Create operation runbooks
 - Write troubleshooting guides
-- Document known issues
+- Document known issues and solutions
 
 **Day 48 Afternoon (4 hours)**
 - Create video tutorials
 - Write quick-start guide
 - Prepare training materials
-- Document FAQ
+- Document FAQ including paper vs live differences
 
 ### Day 49-50: Launch Preparation
 **Day 49 Morning (4 hours)**
