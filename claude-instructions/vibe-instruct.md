@@ -1,3 +1,90 @@
+Vibe-coding works best when a *handful of lightweight, living docs* give you quick context without dragging you out of flow. Below is a distilled “starter kit” of **ten extra files/folders** (beyond the usual `README`, `CONTRIBUTING`, etc.) that seasoned indie and OSS projects adopt to stay in the groove.
+
+## 1 Orientation & Vision
+
+| File                 | Why it matters                                                                                                                                                                                                                                                                                                                |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`VISION.md`**      | A one-pager that states *why* the project exists, the problem it solves, and what success looks like. A clear vision reduces thrash and keeps experiments coherent. ([ibm.com][1], [ecampusontario.pressbooks.pub][2])                                                                                                        |
+| **`MASTER_PLAN.md`** | Breaks the vision into high-level epics or “chunks of work.” It’s not a sprint board—think of it as your personal north-star outline you rewrite freely when inspiration strikes. Organize tasks chronologically or by energy level so you can pick work that matches your vibe. ([mozillascience.github.io][3], [dev.to][4]) |
+
+## 2 Evolution & Planning
+
+| File / Folder        | Purpose                                                                                                                                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`ROADMAP.md`**     | Public, milestone-oriented path (“Now / Next / Later”). Helps collaborators see what’s cooking without pinging you. ([mozillascience.github.io][3], [dev.to][4])                                                                                            |
+| **`CHANGELOG.md`**   | Human-readable release notes following *Keep a Changelog*—date-stamped, grouped by *Added/Changed/Fixed*. Doubles as a reflective journal. ([keepachangelog.com][5], [getbeamer.com][6])                                                                    |
+| **`adr/` directory** | One Markdown Architectural Decision Record per significant choice (template: context ▸ decision ▸ consequences). Lets future-you understand “why on earth did I do that?” without digging through commits. ([adr.github.io][7], [canobertin.medium.com][8]) |
+
+## 3 Decision-Making & Ownership
+
+| File                                | Purpose                                                                                                                                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`CODEOWNERS`**                    | Auto-routes PR reviews to the right person (even if that’s just “@you”). Prevents vibe-breaking review ping-pong. ([docs.github.com][9], [graphite.dev][10])                                           |
+| **`.cursor/rules/` or `rules.mdc`** | If you pair-program with an AI editor like Cursor or Zed, stash prompt rules here (tone, patterns, banned imports, etc.) so generative suggestions stay on-brand. ([github.com][11], [github.com][12]) |
+
+## 4 Consistency & Automation
+
+| File                   | Purpose                                                                                                                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`.editorconfig`**    | Portable linting for tabs/spaces, line-endings, charsets—prevents stylistic nitpicks across IDEs. ([learn.microsoft.com][13], [editorconfig.org][14])                                  |
+| **`/scripts/` folder** | One-liners like `dev`, `lint`, `format`, `demo` that encapsulate tribal knowledge so no one breaks flow googling the right command. (No external citation needed—industry convention.) |
+
+## 5 Ops & Runtime Configuration
+
+| File               | Purpose                                                                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`.env.example`** | Canonical list of required environment variables with safe defaults; pairs with secret-manager tooling in prod. Makes onboarding friction-free. ([github.com][15], [medium.com][16]) |
+
+## 6 Nice-to-Have “Flow Boosters”
+
+* **`IDEAS.md`** – parking lot for sparks that don’t fit today’s milestone.
+* **`/flow_journal/`** – optional daily notes or voice-to-text logs capturing breakthroughs and blockers.
+* **`/moodboard/`** – reference screenshots, palettes, or quick Looms—priceless for UI-heavy apps.
+
+---
+
+### Minimal folder snapshot
+
+```text
+repo/
+├── VISION.md
+├── MASTER_PLAN.md
+├── ROADMAP.md
+├── CHANGELOG.md
+├── adr/0001-initial-decision.md
+├── CODEOWNERS
+├── .editorconfig
+├── .env.example
+├── .cursor/
+│   └── rules.mdc
+└── scripts/
+    └── dev
+```
+
+Start with these, iterate as your project evolves, and you’ll preserve both *momentum* and *institutional memory*—the essence of productive vibe-coding.
+
+[1]: https://www.ibm.com/docs/en/engineering-lifecycle-management-suite/doors-next/7.0.3?topic=requirements-vision-document&utm_source=chatgpt.com "Vision document - IBM"
+[2]: https://ecampusontario.pressbooks.pub/techadaptvls/chapter/chapter-4-vision-documents-tech-adapt-emerging-technologies-and-canadian-professional-contexts/?utm_source=chatgpt.com "Chapter 4: Vision Documents - eCampusOntario Pressbooks"
+[3]: https://mozillascience.github.io/working-open-workshop/roadmapping/?utm_source=chatgpt.com "Intro to Roadmapping"
+[4]: https://dev.to/codacy/best-practices-to-manage-an-open-source-project-3a5l?utm_source=chatgpt.com "Best practices to manage an open source project - DEV Community"
+[5]: https://keepachangelog.com/en/1.1.0/?utm_source=chatgpt.com "Keep a Changelog"
+[6]: https://www.getbeamer.com/blog/11-best-practices-for-changelogs?utm_source=chatgpt.com "11 Best Practices for Changelogs - Beamer"
+[7]: https://adr.github.io/madr/?utm_source=chatgpt.com "About MADR - Architectural Decision Records"
+[8]: https://canobertin.medium.com/what-is-the-difference-between-an-architectural-decision-record-adr-and-a-lightweight-8d75971ea46b?utm_source=chatgpt.com "What is the difference between An Architectural Decision Record ..."
+[9]: https://docs.github.com/articles/about-code-owners?utm_source=chatgpt.com "About code owners - GitHub Docs"
+[10]: https://graphite.dev/guides/in-depth-guide-github-codeowners?utm_source=chatgpt.com "Understanding GitHub CODEOWNERS - Graphite"
+[11]: https://github.com/zed-industries/zed/discussions/26550?utm_source=chatgpt.com "Rules for AI · zed-industries zed · Discussion #26550 - GitHub"
+[12]: https://github.com/ivangrynenko/cursorrules?utm_source=chatgpt.com "ivangrynenko/cursorrules: A set of cursor rules for Cursor AI ... - GitHub"
+[13]: https://learn.microsoft.com/en-us/visualstudio/ide/create-portable-custom-editor-options?view=vs-2022&utm_source=chatgpt.com "Define consistent coding styles with EditorConfig - Visual Studio ..."
+[14]: https://editorconfig.org/?utm_source=chatgpt.com "EditorConfig"
+[15]: https://github.com/ozum/pg-structure/blob/master/.env.example?utm_source=chatgpt.com "pg-structure/.env.example at master - GitHub"
+[16]: https://medium.com/%40tony.infisical/its-time-to-deprecate-the-env-file-for-a-better-stack-a519ac89bab0?utm_source=chatgpt.com "It's time to deprecate the .env file - Medium"
+
+
+
+
+
+
 # Vibe Coding: A Guide to Flow-Based Development Practices
 
 While "vibe coding" isn't a recognized methodology, the concept represents a valuable approach to development that prioritizes creative flow, developer well-being, and intuitive workflows. Here's a comprehensive guide to implementing these principles in your development practice.
