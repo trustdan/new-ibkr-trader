@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'ibkr-python-service'
+    static_configs:
+      - targets: ['python-ibkr:9090']
+    metrics_path: '/metrics'
+    
+  - job_name: 'ibkr-go-scanner'
+    static_configs:
+      - targets: ['go-scanner:8081']
+    metrics_path: '/metrics'

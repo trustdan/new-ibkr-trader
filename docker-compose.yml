@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  python-ibkr:
+    build:
+      context: .
+      dockerfile: docker/python-ibkr/Dockerfile
+    container_name: ibkr-python-service
+    environment:
+      - TWS_HOST=host.docker.internal
+      - TWS_PORT=7497
+      - TWS_CLIENT_ID=1
+      - WATCHDOG_TIMEOUT=60
+      - MAX_SUBSCRIPTIONS=90
+      - ACCOUNT_TYPE=paper
+      - LOG_LEVEL=INFO
+      - PROMETHEUS_PORT=9090
+    ports:
+      - "8080:8080"  # API port
+      - "9091:9090"  # Metrics port
+    volumes:
+      - ./src/python:/app
+      - ./logs/python:/app/logs
+      - ./.vibe/templates:/app/templates:ro
+    networks:
+      - ibkr-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  go-scanner:
+    build:
+      context: .
+      dockerfile: docker/go-scanner/Dockerfile
+    container_name: ibkr-go-scanner
+    environment:
+      - SCANNER_PORT=8081
+      - PYTHON_SERVICE_URL=http://python-ibkr:8080
+      - LOG_LEVEL=INFO
+      - CACHE_TTL=300
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./src/go:/app
+      - ./logs/scanner:/app/logs
+    networks:
+      - ibkr-network
+    depends_on:
+      python-ibkr:
+        condition: service_healthy
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ibkr-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - ibkr-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ibkr-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=vibetrading
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - ibkr-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  ibkr-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  prometheus-data:
+  grafana-data:
