@@ -27,7 +27,7 @@ def check_required_packages():
         'prometheus_client',
         'docker',
         'pytest',
-        'pytest-asyncio'
+        'pytest_asyncio'
     ]
     
     missing = []
