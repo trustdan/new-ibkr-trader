@@ -4,6 +4,19 @@
 
 This roadmap breaks down the development of an automated vertical spread options trading system for Interactive Brokers into manageable phases. Following vibe coding principles, each phase maintains flow state while building toward a complete trading automation platform.
 
+## 🖥️ Platform Requirements by Phase
+
+| Phase | Can Develop on Linux | Requires Windows | Notes |
+|-------|---------------------|------------------|-------|
+| Phase 0 | ✅ Yes | ❌ No | Documentation & setup |
+| Phase 1 | ⚠️ Partial | ✅ Yes for testing | TWS connection required |
+| Phase 2 | ✅ Yes | ❌ No | Go scanner development |
+| Phase 3 | ❌ No | ✅ Yes | Windows GUI development |
+| Phase 4 | ⚠️ Partial | ✅ Yes for testing | Integration testing |
+| Phase 5 | ⚠️ Partial | ✅ Yes | Full system testing |
+| Phase 6 | ✅ Yes | ⚠️ Testing only | Advanced features |
+| Phase 7 | ❌ No | ✅ Yes | Production deployment |
+
 ---
 
 ## Phase 0: Foundation & Environment Setup (Current Phase)
@@ -93,12 +106,17 @@ Feature: TWS Pre-Configuration
 
 ---
 
-## Phase 1: IBKR Connection Layer
+## Phase 1: IBKR Connection Layer 🖥️ **[Requires Windows for TWS Testing]**
 
 ### Objectives
 - Establish reliable connection to Interactive Brokers TWS API
 - Implement core trading operations wrapper
 - Create robust error handling and retry logic
+
+### Platform Notes
+- **Linux Development**: Can write connection wrapper code, unit tests
+- **Windows Required**: Testing actual TWS connections, integration tests
+- **Breakpoint**: Switch to Windows when ready to test live connections
 
 ### Work Chunks
 
@@ -233,12 +251,17 @@ Feature: Comprehensive Filter Suite
 
 ---
 
-## Phase 3: GUI Development
+## Phase 3: GUI Development 🖥️ **[Windows Only]**
 
 ### Objectives
 - Create intuitive Windows application
 - Implement real-time visualization
 - Build comprehensive parameter control panel
+
+### Platform Notes
+- **Must use Windows**: Electron/Tauri development, Windows-specific features
+- **Cannot develop on Linux**: Windows GUI frameworks required
+- **Full Windows environment needed**: Visual Studio, Windows SDK, etc.
 
 ### Work Chunks
 

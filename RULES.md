@@ -91,6 +91,26 @@ Build an automated vertical spread options trading system for Interactive Broker
 - Use whatIfOrder() before placing trades
 - Monitor order status via callbacks
 
+## 🖥️ Windows Environment Breakpoint
+
+### STOP and Switch to Windows When:
+- **TWS Connection Required**: Any actual TWS API connection testing
+- **Windows GUI Development**: Building the Svelte/Electron Windows app
+- **Windows-specific Features**: Registry access, Windows notifications, etc.
+- **Production Testing**: Final integration testing on target platform
+
+### Current Development Status:
+- **Currently on**: Kali Linux (WSL2)
+- **Can continue on Linux**: Documentation, architecture, Docker setup, Go scanner
+- **Must switch to Windows**: TWS testing, GUI development, production builds
+
+### Breakpoint Protocol:
+1. 🛑 **STOP** when reaching Windows-required components
+2. 📝 Document exactly where you stopped in flow journal
+3. 💾 Commit all work with clear handoff notes
+4. 🪟 Continue development on Windows machine with TWS installed
+5. 🔄 Sync back to Linux for non-Windows work
+
 ## 🎨 Creative Guidelines
 
 ### Maintain The Vibe:
