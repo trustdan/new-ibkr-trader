@@ -16,9 +16,28 @@ Create an intuitive, robust, and efficient Windows application to automate verti
 
 ### Dockerized Containers
 
-1. **Python Interface Container**: Connects and communicates directly with Interactive Brokers' Trader Workstation (TWS) API, executing orders, managing positions, and monitoring real-time trading data.
-2. **Go Scanner Container**: Scans and identifies optimal trading opportunities based on extensive, customizable criteria covering all key options metrics.
-3. **GUI Windows App (Go & Svelte)**: A responsive interface for adjusting and fine‑tuning trade parameters, visualizing scanner results, and managing strategy workflows.
+1. **Python Interface Container**: 
+   - Connects to TWS API via TCP socket (127.0.0.1:7497 or IB Gateway on 4001)
+   - Uses ib-insync v0.9.86 for simplified async API handling
+   - Implements EReader thread for message processing
+   - Manages connection lifecycle including daily TWS restarts
+   - Handles API rate limiting (45 req/sec safe threshold)
+   - Executes combo orders for vertical spreads with OCA groups
+   - Monitors real-time position updates and order status callbacks
+
+2. **Go Scanner Container**: 
+   - High-performance concurrent scanning with goroutines
+   - Respects market data line limits based on TWS subscription
+   - Implements request queuing to avoid pacing violations
+   - Caches frequently accessed contract details
+   - Identifies optimal trading opportunities based on extensive criteria
+
+3. **GUI Windows App (Go & Svelte)**: 
+   - Responsive interface requiring no more than 3 clicks to any feature
+   - Real-time WebSocket updates for scanner results and positions
+   - Comprehensive parameter control panel with persistence
+   - Visual indicators for connection status and API health
+   - Trade execution confirmation with whatIfOrder() preview
 
 ---
 
@@ -81,6 +100,39 @@ Feature: Fine‑Tune Options Filters
 5. **Container Orchestration** using Docker Compose for seamless local development and deployment.
 6. **Robust Error Handling** and retry logic in both Python and Go services.
 
+## Technical Requirements (IBKR TWS API)
+
+1. **Connection Management**:
+   - TWS must have "Enable ActiveX and Socket Clients" enabled
+   - "Read-Only API" must be disabled for trading
+   - Unique clientId per connection (max 32 concurrent)
+   - Automatic handling of daily TWS restart
+   - Watchdog implementation for connection recovery
+
+2. **Rate Limiting & Performance**:
+   - Respect 50 requests/second pacing limit (45 req/sec recommended)
+   - Handle Error 100 (pacing violation) with exponential backoff
+   - Queue requests when approaching limits
+   - Implement request batching where possible
+
+3. **Order Execution**:
+   - Use combo orders for vertical spreads
+   - Implement OCA (One-Cancels-All) groups for risk management
+   - Preview orders with whatIfOrder() for margin impact
+   - Monitor order status via asynchronous callbacks
+
+4. **Data Management**:
+   - Subscribe to real-time market data within line limits
+   - Cache contract details to reduce API calls
+   - Handle option chain requests efficiently
+   - Implement proper cleanup on disconnection
+
+5. **Error Handling**:
+   - Comprehensive handling of all TWS error codes
+   - Automatic reconnection on Error 1100 (connectivity lost)
+   - Graceful degradation when services unavailable
+   - Detailed logging of all API interactions
+
 ---
 
 ## Target User
@@ -94,6 +146,10 @@ Experienced options traders who demand precision, speed, and deep customization 
 * Automated trades consistently execute within trader‑defined parameter bounds.
 * GUI responsiveness under heavy scanning workloads.
 * Trader satisfaction with ease of parameter tuning and strategy management.
+* System maintains stable TWS connection through daily restarts.
+* Zero pacing violations during normal operation.
+* Sub-second order execution from signal to TWS confirmation.
+* 99.9% uptime excluding scheduled TWS maintenance windows.
 
 ---
 
