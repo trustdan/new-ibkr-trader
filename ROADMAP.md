@@ -10,6 +10,7 @@ This roadmap breaks down the development of an automated vertical spread options
 |-------|---------------------|------------------|-------|
 | Phase 0 | ✅ Yes | ❌ No | Documentation & setup |
 | Phase 1 | ⚠️ Partial | ✅ Yes for testing | TWS connection required |
+| Phase 1.5 | ✅ Yes | ❌ No | Docker CI/CD setup |
 | Phase 2 | ✅ Yes | ❌ No | Go scanner development |
 | Phase 3 | ❌ No | ✅ Yes | Windows GUI development |
 | Phase 4 | ⚠️ Partial | ✅ Yes for testing | Integration testing |
@@ -186,6 +187,48 @@ Feature: Trading Operations Wrapper
 - [ ] Market data streaming capability within rate limits
 - [ ] TWS configuration validation and setup guide
 - [ ] Request pacing and throttling implementation
+
+---
+
+## Phase 1.5: Docker Hub CI/CD Integration 🐳 **[Day 6.5 Addition]**
+
+### Objectives
+- Set up automated Docker image building
+- Configure GitHub Actions for CI/CD
+- Establish Docker Hub repositories
+- Create development vs production configurations
+
+### Platform Notes
+- **Linux Development**: All work can be done on Linux
+- **No Kubernetes needed**: Docker Compose is sufficient for this desktop app
+- **GitHub Actions**: Cloud-based CI/CD
+
+### Work Chunks
+
+#### Docker Configuration
+- Create optimized Dockerfiles for each service
+- Set up multi-stage builds
+- Configure docker-compose variants (dev/prod)
+- Implement proper volume mappings
+
+#### CI/CD Pipeline
+- GitHub Actions workflow for automated builds
+- Docker Hub integration with secure credentials
+- Automated tagging and versioning
+- Multi-architecture support
+
+### Deliverables
+- [ ] Dockerfiles for Python, Go scanner, and GUI
+- [ ] GitHub Actions workflow (.github/workflows/docker-publish.yml)
+- [ ] Docker Compose configurations (dev/prod)
+- [ ] Docker Hub repositories configured
+- [ ] CI/CD documentation
+
+### Benefits
+- Automated builds on every push
+- Easy distribution of pre-built images
+- Version control for Docker images
+- Simplified deployment for end users
 
 ---
 
