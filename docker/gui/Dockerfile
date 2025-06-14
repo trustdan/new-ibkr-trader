@@ -6,21 +6,16 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /build
 
-# Copy package files first for better caching
-COPY src/gui/package*.json ./
+# Create placeholder structure
+RUN mkdir -p dist && echo "<h1>GUI Not Implemented Yet</h1>" > dist/index.html
 
-# Install dependencies
-RUN npm ci --only=production 2>/dev/null || echo "No package.json yet"
-
-# Copy frontend source
-COPY src/gui/ ./
-
-# Build frontend (when implemented)
-RUN if [ -f "package.json" ]; then \
-        npm run build; \
-    else \
-        mkdir -p dist && echo "<h1>GUI Not Implemented Yet</h1>" > dist/index.html; \
-    fi
+# Copy and build frontend if it exists
+# Note: Since src/gui is empty, we'll skip the copy and use the placeholder
+# When GUI is implemented, uncomment these lines:
+# COPY src/gui/package*.json ./
+# RUN npm ci --only=production
+# COPY src/gui/ ./
+# RUN npm run build
 
 # Build stage for Go backend
 FROM golang:1.21-alpine AS backend-builder
@@ -30,17 +25,17 @@ RUN apk add --no-cache git
 WORKDIR /build
 
 # Copy go mod files
-COPY go.mod go.sum* ./
+COPY src/go/go.mod src/go/go.sum* ./src/go/
 
 # Download dependencies
-RUN go mod download 2>/dev/null || echo "No go.mod yet"
+RUN cd src/go && go mod download 2>/dev/null || echo "No go.mod yet"
 
 # Copy backend source
 COPY src/go/ ./src/go/
 
 # Build GUI backend binary
 RUN if [ -f "src/go/cmd/gui/main.go" ]; then \
-        CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gui-server ./src/go/cmd/gui; \
+        cd src/go && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /build/gui-server ./cmd/gui; \
     else \
         echo "#!/bin/sh\necho 'GUI server not implemented yet'" > gui-server && chmod +x gui-server; \
     fi

@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.9.1
-	github.com/prometheus/client_golang v1.18.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/joho/godotenv v1.5.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/prometheus/client_golang v1.18.0
 	go.uber.org/zap v1.26.0
 )
 
@@ -26,6 +26,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.1 // indirect

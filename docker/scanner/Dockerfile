@@ -11,17 +11,17 @@ RUN apk add --no-cache git
 WORKDIR /build
 
 # Copy go mod files first for better caching
-COPY go.mod go.sum* ./
+COPY src/go/go.mod src/go/go.sum* ./src/go/
 
 # Download dependencies
-RUN go mod download 2>/dev/null || echo "No go.mod yet"
+RUN cd src/go && go mod download 2>/dev/null || echo "No go.mod yet"
 
 # Copy source code
 COPY src/go/ ./src/go/
 
 # Build the scanner binary
 RUN if [ -f "src/go/cmd/scanner/main.go" ]; then \
-        CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o scanner ./src/go/cmd/scanner; \
+        cd src/go && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /build/scanner ./cmd/scanner; \
     else \
         echo "Scanner not implemented yet" > scanner && chmod +x scanner; \
     fi

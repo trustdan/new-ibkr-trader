@@ -20,6 +20,7 @@ jobs:
       packages: write
     
     strategy:
+      fail-fast: false  # Continue building other images even if one fails
       matrix:
         include:
           - service: python
