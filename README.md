@@ -124,9 +124,9 @@ curl http://localhost:8080/health
 
 Pre-built images are available on Docker Hub:
 
-- `ibkrtrader/ibkr-python:latest` - Python IBKR connector
-- `ibkrtrader/ibkr-scanner:latest` - Go options scanner
-- `ibkrtrader/ibkr-gui:latest` - GUI application
+- `trustdan/ibkr-python:latest
+- `trustdan/ibkr-scanner:latest
+- `trustdan/ibkr-gui:latest
 
 ### Building Images Locally
 
