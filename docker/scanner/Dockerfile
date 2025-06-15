@@ -11,20 +11,16 @@ RUN apk add --no-cache git
 WORKDIR /build
 
 # Copy go mod files first for better caching
-COPY src/go/go.mod src/go/go.sum* ./src/go/
+COPY src/scanner/go.mod src/scanner/go.sum* ./
 
 # Download dependencies
-RUN cd src/go && go mod download 2>/dev/null || echo "No go.mod yet"
+RUN go mod download
 
 # Copy source code
-COPY src/go/ ./src/go/
+COPY src/scanner/ ./
 
 # Build the scanner binary
-RUN if [ -f "src/go/cmd/scanner/main.go" ]; then \
-        cd src/go && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /build/scanner ./cmd/scanner; \
-    else \
-        echo "Scanner not implemented yet" > scanner && chmod +x scanner; \
-    fi
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o scanner cmd/scanner/main.go
 
 # Runtime stage
 FROM alpine:3.18
@@ -50,10 +46,10 @@ USER ibkr
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ["scanner", "health"] || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8081/health || exit 1
 
 # Expose scanner API port
-EXPOSE 8080
+EXPOSE 8081
 
 # Default command
-CMD ["scanner", "serve"]
+CMD ["scanner"]
