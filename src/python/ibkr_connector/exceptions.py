@@ -48,6 +48,11 @@ class TWSDailyRestartError(IBKRError):
     pass
 
 
+class WatchdogError(IBKRError):
+    """Raised when watchdog operations fail."""
+    pass
+
+
 # Error code mapping for TWS-specific errors
 TWS_ERROR_MAPPING = {
     100: RateLimitError,
