@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ibkr-automation/scanner/internal/filters"
+	"github.com/ibkr-automation/scanner/internal/scoring"
+	"github.com/ibkr-automation/scanner/internal/greeks"
 	"github.com/ibkr-automation/scanner/pkg/models"
 )
 
@@ -22,6 +24,8 @@ type Scanner struct {
 	logger        *zap.SugaredLogger
 	pythonService string
 	httpClient    *http.Client
+	scorer        *scoring.Scorer
+	greeksAnalyzer *greeks.GreeksAnalyzer
 	
 	// Performance metrics
 	scanCount     uint64
@@ -35,6 +39,17 @@ func New(c *cache.Cache, logger *zap.SugaredLogger) *Scanner {
 		pythonService = url
 	}
 
+	// Initialize scoring and Greeks analysis
+	scoringConfig := scoring.DefaultScoringConfig()
+	if scoringMode := os.Getenv("SCORING_MODE"); scoringMode != "" {
+		switch scoringMode {
+		case "conservative":
+			scoringConfig = scoring.ConservativeScoringConfig()
+		case "aggressive":
+			scoringConfig = scoring.AggressiveScoringConfig()
+		}
+	}
+
 	return &Scanner{
 		cache:         c,
 		logger:        logger,
@@ -42,6 +57,8 @@ func New(c *cache.Cache, logger *zap.SugaredLogger) *Scanner {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		scorer:         scoring.NewScorer(scoringConfig),
+		greeksAnalyzer: greeks.NewGreeksAnalyzer(greeks.DefaultGreeksConfig()),
 	}
 }
 
