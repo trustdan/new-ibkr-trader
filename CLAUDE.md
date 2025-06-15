@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **IMPORTANT**: Always start each session by reading RULES.md for quick reference and vibe coding principles.
 
+## Session Initialization
+
+- At the start of each session, please review the RULES.md, MASTER_PLAN_UNIFIED.md, flow_journal/, flow-journal/, logs, and commit history in order to see where we're at in the grand scheme of things
+
 ## Project Overview
 
 **IBKR Spread Automation** - A Windows application for automating vertical spread options trading through Interactive Brokers.

@@ -6,6 +6,7 @@ ib-insync==0.9.86
 # Async support
 aiohttp>=3.9.0
 nest-asyncio>=1.5.8
+httpx>=0.25.0
 
 # Testing
 pytest>=7.4.0
