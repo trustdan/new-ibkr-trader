@@ -8,7 +8,7 @@ import (
 )
 
 // Helper function to create test contracts
-func createTestContracts() []models.OptionContract {
+func createBasicTestContracts() []models.OptionContract {
 	return []models.OptionContract{
 		{
 			Symbol:       "SPY240315C00500",
@@ -59,7 +59,7 @@ func createTestContracts() []models.OptionContract {
 }
 
 func TestDeltaFilter(t *testing.T) {
-	contracts := createTestContracts()
+	contracts := createBasicTestContracts()
 	
 	tests := []struct {
 		name     string
@@ -100,7 +100,7 @@ func TestDeltaFilter(t *testing.T) {
 }
 
 func TestDTEFilter(t *testing.T) {
-	contracts := createTestContracts()
+	contracts := createBasicTestContracts()
 	
 	tests := []struct {
 		name     string
@@ -136,7 +136,7 @@ func TestDTEFilter(t *testing.T) {
 }
 
 func TestLiquidityFilter(t *testing.T) {
-	contracts := createTestContracts()
+	contracts := createBasicTestContracts()
 	
 	tests := []struct {
 		name     string
@@ -174,7 +174,7 @@ func TestLiquidityFilter(t *testing.T) {
 }
 
 func TestFilterChain(t *testing.T) {
-	contracts := createTestContracts()
+	contracts := createBasicTestContracts()
 	
 	config := FilterConfig{
 		Delta: &DeltaFilter{

@@ -38,17 +38,22 @@ type OptionContract struct {
 	BidAskSpread float64   `json:"bid_ask_spread"`
 	Moneyness    float64   `json:"moneyness"` // Distance from current price
 	
+	// Score for ranking
+	Score        float64   `json:"score"`
+	
 	// Metadata
 	LastUpdate   time.Time `json:"last_update"`
 }
 
 // VerticalSpread represents a vertical spread strategy
 type VerticalSpread struct {
-	LongLeg      *OptionContract `json:"long_leg"`
-	ShortLeg     *OptionContract `json:"short_leg"`
+	Symbol       string          `json:"symbol"`
+	LongLeg      OptionContract  `json:"long_leg"`
+	ShortLeg     OptionContract  `json:"short_leg"`
 	SpreadType   string          `json:"spread_type"` // "DEBIT" or "CREDIT"
 	
 	// Spread metrics
+	Credit       float64         `json:"credit"`      // For credit spreads
 	NetDebit     float64         `json:"net_debit"`
 	MaxProfit    float64         `json:"max_profit"`
 	MaxLoss      float64         `json:"max_loss"`
@@ -59,6 +64,9 @@ type VerticalSpread struct {
 	NetDelta     float64         `json:"net_delta"`
 	NetTheta     float64         `json:"net_theta"`
 	NetVega      float64         `json:"net_vega"`
+	
+	// Underlying info
+	UnderlyingPrice float64      `json:"underlying_price"`
 	
 	// Score for ranking
 	Score        float64         `json:"score"`
