@@ -3,232 +3,174 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
-	
+
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-	"github.com/ibkr-trader/scanner/internal/filters"
+	v1 "github.com/ibkr-trader/scanner/api/v1"
+	"github.com/ibkr-trader/scanner/internal/analytics"
+	"github.com/ibkr-trader/scanner/internal/history"
+	"github.com/ibkr-trader/scanner/internal/metrics"
 	"github.com/ibkr-trader/scanner/internal/service"
+	"github.com/ibkr-trader/scanner/internal/streaming"
+	"github.com/rs/zerolog/log"
 )
 
-// Server handles HTTP API requests for the scanner
+// Server represents the API server
 type Server struct {
-	scanner  *service.Scanner
-	router   *mux.Router
-	upgrader websocket.Upgrader
-	clients  map[*websocket.Conn]bool
+	router       *mux.Router
+	httpServer   *http.Server
+	scanner      *service.Scanner
+	streamer     *streaming.Manager
+	analytics    *analytics.Engine
+	history      *history.Store
+	metrics      *metrics.Collector
+	port         int
+}
+
+// Config holds server configuration
+type Config struct {
+	Port            int
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	IdleTimeout     time.Duration
+	MaxHeaderBytes  int
+}
+
+// DefaultConfig returns default server configuration
+func DefaultConfig() Config {
+	return Config{
+		Port:           8080,
+		ReadTimeout:    15 * time.Second,
+		WriteTimeout:   15 * time.Second,
+		IdleTimeout:    60 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MB
+	}
 }
 
 // NewServer creates a new API server
-func NewServer(scanner *service.Scanner) *Server {
+func NewServer(
+	config Config,
+	scanner *service.Scanner,
+	streamer *streaming.Manager,
+	analytics *analytics.Engine,
+	history *history.Store,
+	metrics *metrics.Collector,
+) *Server {
+	router := mux.NewRouter()
+	
 	s := &Server{
-		scanner: scanner,
-		router:  mux.NewRouter(),
-		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins for now
-			},
-		},
-		clients: make(map[*websocket.Conn]bool),
+		router:    router,
+		scanner:   scanner,
+		streamer:  streamer,
+		analytics: analytics,
+		history:   history,
+		metrics:   metrics,
+		port:      config.Port,
 	}
 	
+	// Setup routes
 	s.setupRoutes()
+	
+	// Create HTTP server
+	s.httpServer = &http.Server{
+		Addr:           fmt.Sprintf(":%d", config.Port),
+		Handler:        router,
+		ReadTimeout:    config.ReadTimeout,
+		WriteTimeout:   config.WriteTimeout,
+		IdleTimeout:    config.IdleTimeout,
+		MaxHeaderBytes: config.MaxHeaderBytes,
+	}
+	
 	return s
 }
 
 // setupRoutes configures all API routes
 func (s *Server) setupRoutes() {
-	// Health check
-	s.router.HandleFunc("/health", s.handleHealth).Methods("GET")
+	// Root health check
+	s.router.HandleFunc("/", s.handleRoot).Methods("GET")
 	
-	// Scanning endpoints
-	s.router.HandleFunc("/scan/{symbol}", s.handleScanSymbol).Methods("POST")
-	s.router.HandleFunc("/scan/multiple", s.handleScanMultiple).Methods("POST")
+	// API v1
+	apiV1 := v1.NewAPI(s.scanner, s.streamer, s.analytics, s.history, s.metrics)
+	apiV1.RegisterRoutes(s.router)
 	
-	// Filter management
-	s.router.HandleFunc("/filters", s.handleGetFilters).Methods("GET")
-	s.router.HandleFunc("/filters", s.handleUpdateFilters).Methods("PUT")
-	s.router.HandleFunc("/filters/presets", s.handleGetPresets).Methods("GET")
-	s.router.HandleFunc("/filters/presets", s.handleSavePreset).Methods("POST")
+	// Static files for API documentation (optional)
+	s.router.PathPrefix("/docs/").Handler(http.StripPrefix("/docs/", http.FileServer(http.Dir("./static/docs/"))))
 	
-	// WebSocket for real-time updates
-	s.router.HandleFunc("/ws", s.handleWebSocket)
+	// Catch-all 404 handler
+	s.router.NotFoundHandler = http.HandlerFunc(s.handleNotFound)
 }
 
-// ServeHTTP implements http.Handler
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.router.ServeHTTP(w, r)
+// Start starts the API server
+func (s *Server) Start() error {
+	log.Info().
+		Int("port", s.port).
+		Msg("Starting API server")
+	
+	// Start server in goroutine
+	go func() {
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("Failed to start server")
+		}
+	}()
+	
+	// Wait for server to start
+	time.Sleep(100 * time.Millisecond)
+	
+	log.Info().
+		Str("address", fmt.Sprintf("http://localhost:%d", s.port)).
+		Str("api_docs", fmt.Sprintf("http://localhost:%d/api/v1/openapi.json", s.port)).
+		Msg("API server started successfully")
+	
+	return nil
 }
 
-// handleHealth returns service health status
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
-		"status":    "healthy",
-		"timestamp": time.Now().Unix(),
-		"service":   "scanner",
+// Stop gracefully stops the API server
+func (s *Server) Stop(ctx context.Context) error {
+	log.Info().Msg("Stopping API server")
+	
+	// Shutdown HTTP server
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown failed: %w", err)
 	}
+	
+	// Close streaming connections
+	s.streamer.CloseAll()
+	
+	log.Info().Msg("API server stopped")
+	return nil
+}
+
+// handleRoot handles root endpoint
+func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
+	response := map[string]interface{}{
+		"service": "IBKR Scanner API",
+		"status":  "online",
+		"version": "1.0.0",
+		"endpoints": map[string]string{
+			"health":  "/api/v1/health",
+			"api_v1":  "/api/v1",
+			"docs":    "/api/v1/openapi.json",
+			"metrics": "/api/v1/metrics",
+		},
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
-// handleScanSymbol scans a single symbol
-func (s *Server) handleScanSymbol(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	symbol := vars["symbol"]
-	
-	// Parse request body for filter overrides
-	var filterConfig filters.FilterConfig
-	if err := json.NewDecoder(r.Body).Decode(&filterConfig); err != nil {
-		// Use default filters if none provided
-	}
-	
-	// Perform scan
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-	
-	result, err := s.scanner.ScanSymbol(ctx, symbol)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	
-	// Broadcast to WebSocket clients
-	s.broadcastResult(result)
-	
-	// Return result
+// handleNotFound handles 404 errors
+func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
-}
-
-// handleScanMultiple scans multiple symbols
-func (s *Server) handleScanMultiple(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Symbols []string             `json:"symbols"`
-		Filters filters.FilterConfig `json:"filters"`
+	w.WriteHeader(http.StatusNotFound)
+	
+	response := map[string]interface{}{
+		"error":     "Not Found",
+		"status":    404,
+		"path":      r.URL.Path,
+		"timestamp": time.Now().Unix(),
 	}
 	
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	
-	// Perform scans
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
-	defer cancel()
-	
-	results, err := s.scanner.ScanMultiple(ctx, request.Symbols)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	
-	// Broadcast each result
-	for _, result := range results {
-		s.broadcastResult(result)
-	}
-	
-	// Return results
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(results)
-}
-
-// handleGetFilters returns current filter configuration
-func (s *Server) handleGetFilters(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement filter retrieval
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "not_implemented"})
-}
-
-// handleUpdateFilters updates filter configuration
-func (s *Server) handleUpdateFilters(w http.ResponseWriter, r *http.Request) {
-	var filterConfig filters.FilterConfig
-	if err := json.NewDecoder(r.Body).Decode(&filterConfig); err != nil {
-		http.Error(w, "Invalid filter configuration", http.StatusBadRequest)
-		return
-	}
-	
-	// TODO: Update scanner filters
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
-}
-
-// handleGetPresets returns saved filter presets
-func (s *Server) handleGetPresets(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement preset management
-	presets := []map[string]interface{}{
-		{
-			"name": "Conservative",
-			"filters": map[string]interface{}{
-				"delta": map[string]float64{"min": 0.25, "max": 0.35},
-				"dte":   map[string]int{"min": 30, "max": 60},
-			},
-		},
-		{
-			"name": "Aggressive",
-			"filters": map[string]interface{}{
-				"delta": map[string]float64{"min": 0.15, "max": 0.25},
-				"dte":   map[string]int{"min": 15, "max": 30},
-			},
-		},
-	}
-	
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(presets)
-}
-
-// handleSavePreset saves a new filter preset
-func (s *Server) handleSavePreset(w http.ResponseWriter, r *http.Request) {
-	var preset struct {
-		Name    string               `json:"name"`
-		Filters filters.FilterConfig `json:"filters"`
-	}
-	
-	if err := json.NewDecoder(r.Body).Decode(&preset); err != nil {
-		http.Error(w, "Invalid preset data", http.StatusBadRequest)
-		return
-	}
-	
-	// TODO: Save preset
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "saved", "name": preset.Name})
-}
-
-// handleWebSocket handles WebSocket connections for real-time updates
-func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := s.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-	
-	// Register client
-	s.clients[conn] = true
-	defer delete(s.clients, conn)
-	
-	// Keep connection alive
-	for {
-		_, _, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
-	}
-}
-
-// broadcastResult sends scan results to all WebSocket clients
-func (s *Server) broadcastResult(result interface{}) {
-	data, err := json.Marshal(map[string]interface{}{
-		"type":    "scan_result",
-		"payload": result,
-	})
-	if err != nil {
-		return
-	}
-	
-	for client := range s.clients {
-		err := client.WriteMessage(websocket.TextMessage, data)
-		if err != nil {
-			client.Close()
-			delete(s.clients, client)
-		}
-	}
+	json.NewEncoder(w).Encode(response)
 }
