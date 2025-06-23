@@ -32,10 +32,10 @@ func NewPresetCache() *PresetCache {
 	cache := &PresetCache{
 		presets: make(map[string]*FilterPreset),
 	}
-	
+
 	// Load default presets
 	cache.loadDefaults()
-	
+
 	return cache
 }
 
@@ -52,21 +52,16 @@ func (pc *PresetCache) loadDefaults() {
 			description: "Low risk, steady returns strategy",
 			filters: FilterConfig{
 				Delta: &DeltaFilter{
-					Min: 0.25,
-					Max: 0.35,
+					MinDelta: 0.25,
+					MaxDelta: 0.35,
 				},
 				DTE: &DTEFilter{
-					Min: 30,
-					Max: 60,
+					MinDTE: 30,
+					MaxDTE: 60,
 				},
 				Liquidity: &LiquidityFilter{
 					MinOpenInterest: 500,
 					MinVolume:       100,
-				},
-				Spread: &SpreadFilter{
-					MinCredit:    1.0,
-					MaxWidth:     5.0,
-					MinRiskReward: 0.5,
 				},
 			},
 			tags: []string{"conservative", "low-risk", "beginner"},
@@ -76,21 +71,16 @@ func (pc *PresetCache) loadDefaults() {
 			description: "Balanced risk/reward strategy",
 			filters: FilterConfig{
 				Delta: &DeltaFilter{
-					Min: 0.20,
-					Max: 0.30,
+					MinDelta: 0.20,
+					MaxDelta: 0.30,
 				},
 				DTE: &DTEFilter{
-					Min: 21,
-					Max: 45,
+					MinDTE: 21,
+					MaxDTE: 45,
 				},
 				Liquidity: &LiquidityFilter{
 					MinOpenInterest: 250,
 					MinVolume:       50,
-				},
-				Spread: &SpreadFilter{
-					MinCredit:    0.75,
-					MaxWidth:     7.5,
-					MinRiskReward: 0.4,
 				},
 			},
 			tags: []string{"balanced", "moderate", "popular"},
@@ -112,8 +102,8 @@ func (pc *PresetCache) loadDefaults() {
 					MinVolume:       25,
 				},
 				Spread: &SpreadFilter{
-					MinCredit:    0.50,
-					MaxWidth:     10.0,
+					MinCredit:     0.50,
+					MaxWidth:      10.0,
 					MinRiskReward: 0.3,
 				},
 			},
@@ -136,8 +126,8 @@ func (pc *PresetCache) loadDefaults() {
 					MinVolume:       200,
 				},
 				Spread: &SpreadFilter{
-					MinCredit:    0.25,
-					MaxWidth:     2.5,
+					MinCredit:     0.25,
+					MaxWidth:      2.5,
 					MinRiskReward: 0.3,
 				},
 			},
@@ -160,8 +150,8 @@ func (pc *PresetCache) loadDefaults() {
 					MinVolume:       100,
 				},
 				Spread: &SpreadFilter{
-					MinCredit:    0.50,
-					MaxWidth:     5.0,
+					MinCredit:     0.50,
+					MaxWidth:      5.0,
 					MinRiskReward: 0.25,
 				},
 				Advanced: &AdvancedFilter{
@@ -171,7 +161,7 @@ func (pc *PresetCache) loadDefaults() {
 			tags: []string{"high-pop", "probability", "safe"},
 		},
 	}
-	
+
 	for _, preset := range defaults {
 		id := uuid.New().String()
 		pc.presets[id] = &FilterPreset{
@@ -191,13 +181,13 @@ func (pc *PresetCache) loadDefaults() {
 func (pc *PresetCache) GetAll() map[string]*FilterPreset {
 	pc.mu.RLock()
 	defer pc.mu.RUnlock()
-	
+
 	// Return a copy to prevent external modifications
 	result := make(map[string]*FilterPreset, len(pc.presets))
 	for k, v := range pc.presets {
 		result[k] = v
 	}
-	
+
 	return result
 }
 
@@ -205,13 +195,13 @@ func (pc *PresetCache) GetAll() map[string]*FilterPreset {
 func (pc *PresetCache) Get(id string) (*FilterPreset, bool) {
 	pc.mu.RLock()
 	defer pc.mu.RUnlock()
-	
+
 	preset, exists := pc.presets[id]
 	if exists {
 		// Increment usage count
 		go pc.incrementUsage(id)
 	}
-	
+
 	return preset, exists
 }
 
@@ -219,7 +209,7 @@ func (pc *PresetCache) Get(id string) (*FilterPreset, bool) {
 func (pc *PresetCache) Save(name, description string, filters FilterConfig, tags []string) string {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	
+
 	id := uuid.New().String()
 	pc.presets[id] = &FilterPreset{
 		ID:          id,
@@ -231,7 +221,7 @@ func (pc *PresetCache) Save(name, description string, filters FilterConfig, tags
 		UpdatedAt:   time.Now(),
 		UsageCount:  0,
 	}
-	
+
 	return id
 }
 
@@ -239,29 +229,29 @@ func (pc *PresetCache) Save(name, description string, filters FilterConfig, tags
 func (pc *PresetCache) Update(id string, update interface{}) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	
+
 	preset, exists := pc.presets[id]
 	if !exists {
 		return fmt.Errorf("preset not found: %s", id)
 	}
-	
+
 	// Update fields based on provided data
 	data, err := json.Marshal(update)
 	if err != nil {
 		return err
 	}
-	
+
 	var updates struct {
 		Name        string       `json:"name,omitempty"`
 		Description string       `json:"description,omitempty"`
 		Filters     FilterConfig `json:"filters,omitempty"`
 		Tags        []string     `json:"tags,omitempty"`
 	}
-	
+
 	if err := json.Unmarshal(data, &updates); err != nil {
 		return err
 	}
-	
+
 	// Apply updates
 	if updates.Name != "" {
 		preset.Name = updates.Name
@@ -275,9 +265,9 @@ func (pc *PresetCache) Update(id string, update interface{}) error {
 	if updates.Tags != nil {
 		preset.Tags = updates.Tags
 	}
-	
+
 	preset.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -285,11 +275,11 @@ func (pc *PresetCache) Update(id string, update interface{}) error {
 func (pc *PresetCache) Delete(id string) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	
+
 	if _, exists := pc.presets[id]; !exists {
 		return fmt.Errorf("preset not found: %s", id)
 	}
-	
+
 	delete(pc.presets, id)
 	return nil
 }
@@ -298,7 +288,7 @@ func (pc *PresetCache) Delete(id string) error {
 func (pc *PresetCache) incrementUsage(id string) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
-	
+
 	if preset, exists := pc.presets[id]; exists {
 		preset.UsageCount++
 	}
@@ -308,13 +298,13 @@ func (pc *PresetCache) incrementUsage(id string) {
 func (pc *PresetCache) GetPopular(limit int) []*FilterPreset {
 	pc.mu.RLock()
 	defer pc.mu.RUnlock()
-	
+
 	// Convert to slice for sorting
 	presets := make([]*FilterPreset, 0, len(pc.presets))
 	for _, preset := range pc.presets {
 		presets = append(presets, preset)
 	}
-	
+
 	// Sort by usage count
 	for i := 0; i < len(presets)-1; i++ {
 		for j := i + 1; j < len(presets); j++ {
@@ -323,12 +313,12 @@ func (pc *PresetCache) GetPopular(limit int) []*FilterPreset {
 			}
 		}
 	}
-	
+
 	// Return top N
 	if limit > len(presets) {
 		limit = len(presets)
 	}
-	
+
 	return presets[:limit]
 }
 
@@ -336,9 +326,9 @@ func (pc *PresetCache) GetPopular(limit int) []*FilterPreset {
 func (pc *PresetCache) FindByTags(tags []string) []*FilterPreset {
 	pc.mu.RLock()
 	defer pc.mu.RUnlock()
-	
+
 	result := make([]*FilterPreset, 0)
-	
+
 	for _, preset := range pc.presets {
 		for _, tag := range tags {
 			for _, presetTag := range preset.Tags {
@@ -350,6 +340,6 @@ func (pc *PresetCache) FindByTags(tags []string) []*FilterPreset {
 		}
 	next:
 	}
-	
+
 	return result
 }

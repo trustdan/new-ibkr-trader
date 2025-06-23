@@ -78,8 +78,8 @@ type Option struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		scannerURL:   "http://localhost:8080", // Go scanner service
-		pythonURL:    "http://localhost:8000", // Python IBKR service
+		scannerURL:   "http://localhost:8081", // Go scanner service (manual)
+		pythonURL:    "http://localhost:8080", // Python IBKR service (manual)
 		systemHealth: &SystemHealth{},
 	}
 }

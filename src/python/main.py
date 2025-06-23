@@ -8,7 +8,11 @@ import signal
 import sys
 from typing import Optional
 
-import uvloop
+try:
+    import uvloop
+    UVLOOP_AVAILABLE = True
+except ImportError:
+    UVLOOP_AVAILABLE = False
 from aiohttp import web
 from ib_insync import IB, util
 from ib_insync.ibcontroller import Watchdog
@@ -94,8 +98,13 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Use uvloop for better async performance
-    uvloop.install()
+    # Setup basic logging first
+    logger = setup_logging("ibkr-python-service")
+    
+    # Use uvloop for better async performance (Linux/macOS only)
+    if UVLOOP_AVAILABLE:
+        uvloop.install()
+        logger.info("Using uvloop for enhanced performance")
     
     # Run the service
     try:

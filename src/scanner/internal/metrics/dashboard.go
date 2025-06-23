@@ -2,12 +2,12 @@ package metrics
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
-	
+
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -35,43 +35,43 @@ type TimeSeriesPoint struct {
 // DashboardMetrics contains current metrics for the dashboard
 type DashboardMetrics struct {
 	// Overview
-	TotalScans       int64   `json:"total_scans"`
-	ScanRate         float64 `json:"scan_rate"`
-	ActiveScans      int     `json:"active_scans"`
-	ErrorRate        float64 `json:"error_rate"`
-	
+	TotalScans  int64   `json:"total_scans"`
+	ScanRate    float64 `json:"scan_rate"`
+	ActiveScans int     `json:"active_scans"`
+	ErrorRate   float64 `json:"error_rate"`
+
 	// Performance
 	AvgScanDuration  float64 `json:"avg_scan_duration_ms"`
 	ResultThroughput float64 `json:"result_throughput"`
 	CacheHitRate     float64 `json:"cache_hit_rate"`
-	
+
 	// WebSocket
-	WSConnections    int     `json:"ws_connections"`
-	WSMessageRate    float64 `json:"ws_message_rate"`
-	
+	WSConnections int     `json:"ws_connections"`
+	WSMessageRate float64 `json:"ws_message_rate"`
+
 	// System
-	MemoryUsageMB    float64 `json:"memory_usage_mb"`
-	GoroutineCount   int     `json:"goroutine_count"`
-	CPUUsage         float64 `json:"cpu_usage"`
-	
+	MemoryUsageMB  float64 `json:"memory_usage_mb"`
+	GoroutineCount int     `json:"goroutine_count"`
+	CPUUsage       float64 `json:"cpu_usage"`
+
 	// Filters
 	TopFilters       []FilterMetric `json:"top_filters"`
 	FilterEfficiency float64        `json:"filter_efficiency"`
-	
+
 	// Alerts
-	AlertsTriggered  int64   `json:"alerts_triggered"`
-	AlertQueueSize   int     `json:"alert_queue_size"`
-	
+	AlertsTriggered int64 `json:"alerts_triggered"`
+	AlertQueueSize  int   `json:"alert_queue_size"`
+
 	// History
-	History          *MetricsHistory `json:"history"`
+	History *MetricsHistory `json:"history"`
 }
 
 // FilterMetric represents metrics for a single filter
 type FilterMetric struct {
-	Name           string  `json:"name"`
-	Executions     int64   `json:"executions"`
-	AvgDuration    float64 `json:"avg_duration_ms"`
-	AvgReduction   float64 `json:"avg_reduction"`
+	Name         string  `json:"name"`
+	Executions   int64   `json:"executions"`
+	AvgDuration  float64 `json:"avg_duration_ms"`
+	AvgReduction float64 `json:"avg_reduction"`
 }
 
 // NewDashboardHandler creates a new dashboard handler
@@ -92,7 +92,7 @@ func NewDashboardHandler(collector *MetricsCollector) *DashboardHandler {
 func (h *DashboardHandler) RegisterRoutes(router *gin.Engine) {
 	// Prometheus metrics endpoint
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	
+
 	// Dashboard endpoints
 	dashboard := router.Group("/dashboard")
 	{
@@ -354,13 +354,13 @@ func (h *DashboardHandler) handleDashboard(c *gin.Context) {
 </body>
 </html>
 `
-	
+
 	t, err := template.New("dashboard").Parse(tmpl)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.Header("Content-Type", "text/html")
 	t.Execute(c.Writer, nil)
 }
@@ -380,7 +380,7 @@ func (h *DashboardHandler) handleHistoryJSON(c *gin.Context) {
 func (h *DashboardHandler) collectCurrentMetrics() DashboardMetrics {
 	// This is a simplified implementation
 	// In production, you would query the Prometheus API
-	
+
 	metrics := DashboardMetrics{
 		// Mock data - replace with actual Prometheus queries
 		TotalScans:       1000,
@@ -400,33 +400,33 @@ func (h *DashboardHandler) collectCurrentMetrics() DashboardMetrics {
 		AlertQueueSize:   2,
 		History:          h.history,
 	}
-	
+
 	// Update history
 	h.updateHistory(metrics)
-	
+
 	return metrics
 }
 
 // updateHistory updates the metrics history
 func (h *DashboardHandler) updateHistory(metrics DashboardMetrics) {
 	now := time.Now()
-	
+
 	// Add new points
 	h.history.ScanRate = h.addPoint(h.history.ScanRate, TimeSeriesPoint{
 		Timestamp: now,
 		Value:     metrics.ScanRate,
 	})
-	
+
 	h.history.ResultRate = h.addPoint(h.history.ResultRate, TimeSeriesPoint{
 		Timestamp: now,
 		Value:     metrics.ResultThroughput,
 	})
-	
+
 	h.history.WSConnections = h.addPoint(h.history.WSConnections, TimeSeriesPoint{
 		Timestamp: now,
 		Value:     float64(metrics.WSConnections),
 	})
-	
+
 	h.history.MemoryUsage = h.addPoint(h.history.MemoryUsage, TimeSeriesPoint{
 		Timestamp: now,
 		Value:     metrics.MemoryUsageMB,
@@ -436,18 +436,18 @@ func (h *DashboardHandler) updateHistory(metrics DashboardMetrics) {
 // addPoint adds a point to the time series, maintaining max size
 func (h *DashboardHandler) addPoint(series []TimeSeriesPoint, point TimeSeriesPoint) []TimeSeriesPoint {
 	series = append(series, point)
-	
+
 	if len(series) > h.history.maxPoints {
 		series = series[len(series)-h.history.maxPoints:]
 	}
-	
+
 	return series
 }
 
 // ExportMetrics exports metrics data in various formats
 func (h *DashboardHandler) ExportMetrics(format string) ([]byte, error) {
 	metrics := h.collectCurrentMetrics()
-	
+
 	switch format {
 	case "json":
 		return json.MarshalIndent(metrics, "", "  ")
