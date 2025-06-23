@@ -18,7 +18,7 @@ RUN mkdir -p dist && echo "<h1>GUI Not Implemented Yet</h1>" > dist/index.html
 # RUN npm run build
 
 # Build stage for Go backend
-FROM golang:1.21-alpine AS backend-builder
+FROM golang:1.24-alpine AS backend-builder
 
 RUN apk add --no-cache git
 
