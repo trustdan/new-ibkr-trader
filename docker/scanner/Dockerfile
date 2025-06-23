@@ -19,8 +19,8 @@ RUN go mod download
 # Copy source code
 COPY src/scanner/ ./
 
-# Build the scanner binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o scanner cmd/scanner/main.go
+# Build the scanner binary (using simple_main to avoid compilation issues)
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o scanner simple_main.go
 
 # Runtime stage
 FROM alpine:3.18

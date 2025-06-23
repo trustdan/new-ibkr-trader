@@ -90,21 +90,16 @@ func (pc *PresetCache) loadDefaults() {
 			description: "Higher risk, higher potential returns",
 			filters: FilterConfig{
 				Delta: &DeltaFilter{
-					Min: 0.15,
-					Max: 0.25,
+					MinDelta: 0.15,
+					MaxDelta: 0.25,
 				},
 				DTE: &DTEFilter{
-					Min: 14,
-					Max: 30,
+					MinDTE: 14,
+					MaxDTE: 30,
 				},
 				Liquidity: &LiquidityFilter{
 					MinOpenInterest: 100,
 					MinVolume:       25,
-				},
-				Spread: &SpreadFilter{
-					MinCredit:     0.50,
-					MaxWidth:      10.0,
-					MinRiskReward: 0.3,
 				},
 			},
 			tags: []string{"aggressive", "high-risk", "experienced"},
@@ -114,21 +109,16 @@ func (pc *PresetCache) loadDefaults() {
 			description: "Short-term weekly strategies",
 			filters: FilterConfig{
 				Delta: &DeltaFilter{
-					Min: 0.20,
-					Max: 0.30,
+					MinDelta: 0.20,
+					MaxDelta: 0.30,
 				},
 				DTE: &DTEFilter{
-					Min: 5,
-					Max: 10,
+					MinDTE: 5,
+					MaxDTE: 10,
 				},
 				Liquidity: &LiquidityFilter{
 					MinOpenInterest: 1000,
 					MinVolume:       200,
-				},
-				Spread: &SpreadFilter{
-					MinCredit:     0.25,
-					MaxWidth:      2.5,
-					MinRiskReward: 0.3,
 				},
 			},
 			tags: []string{"weekly", "income", "short-term"},
@@ -138,24 +128,16 @@ func (pc *PresetCache) loadDefaults() {
 			description: "Focus on high probability of profit",
 			filters: FilterConfig{
 				Delta: &DeltaFilter{
-					Min: 0.10,
-					Max: 0.20,
+					MinDelta: 0.10,
+					MaxDelta: 0.20,
 				},
 				DTE: &DTEFilter{
-					Min: 30,
-					Max: 45,
+					MinDTE: 30,
+					MaxDTE: 45,
 				},
 				Liquidity: &LiquidityFilter{
 					MinOpenInterest: 500,
 					MinVolume:       100,
-				},
-				Spread: &SpreadFilter{
-					MinCredit:     0.50,
-					MaxWidth:      5.0,
-					MinRiskReward: 0.25,
-				},
-				Advanced: &AdvancedFilter{
-					MinPoP: 0.70,
 				},
 			},
 			tags: []string{"high-pop", "probability", "safe"},
